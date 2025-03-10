@@ -16,9 +16,9 @@ class PermutermIndex:
         self.word_map = {}
         self.posting_list = defaultdict(set)
 
-    def insert(self, word, position):
+    def insert(self, word, doc_id, position):
         self.word_map[word] = True
-        self.posting_list[word].add(position + 1)  # Start index from 1
+        self.posting_list[word].add((doc_id, position + 1))  # Start index from 1
         rotated_word = word + "$"
         
         for i in range(len(rotated_word)):
@@ -78,11 +78,16 @@ def extract_text_from_docx(file):
 # Streamlit App
 st.title("Permuterm Index Search")
 
-uploaded_file = st.file_uploader("Upload a document", type=["txt", "pdf", "docx"])
+uploaded_files = st.file_uploader("Upload documents", type=["txt", "pdf", "docx"], accept_multiple_files=True)
 
-document_text = ""
-if uploaded_file is not None:
+documents = {}
+permuterm = PermutermIndex()
+
+doc_id = 0
+for uploaded_file in uploaded_files:
+    doc_id += 1
     file_type = uploaded_file.type
+    file_name = uploaded_file.name
     
     if file_type == "text/plain":
         document_text = uploaded_file.read().decode("utf-8")
@@ -90,21 +95,45 @@ if uploaded_file is not None:
         document_text = extract_text_from_pdf(uploaded_file)
     elif file_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         document_text = extract_text_from_docx(uploaded_file)
+    else:
+        continue
     
-    st.text_area("Document Content", document_text, height=200)
-    
+    documents[doc_id] = (file_name, document_text)
     tokens = process_document(document_text)
-    permuterm = PermutermIndex()
     for idx, word in enumerate(tokens):
-        permuterm.insert(word, idx)
+        permuterm.insert(word, doc_id, idx)
+
+if documents:
+    st.write("### Uploaded Documents")
+    for doc_id, (file_name, _) in documents.items():
+        st.write(f"**Document {doc_id}:** {file_name}")
+
+query = st.text_input("Enter a search query (with * for wildcard):")
+if st.button("Search"):
+    results = permuterm.search(query)
+    if results:
+        st.write("### Search Results")
+        for word in results:
+            if word in permuterm.posting_list:
+                term_frequency = len(permuterm.posting_list[word])
+                postings = defaultdict(list)
+                for doc_id, pos in sorted(permuterm.posting_list[word]):
+                    postings[doc_id].append(str(pos))
+                postings_str = "\n    ".join([f"doc{doc_id}: {', '.join(pos_list)};" for doc_id, pos_list in postings.items()])
+                st.write(f"<{word}: {term_frequency};\n    {postings_str}>")
+    else:
+        st.write("No matching words found.")
+
+if st.button("Show Posting List"):
+    st.write("### Posting List (Sorted by Term)")
+    sorted_posting_list = sorted(permuterm.posting_list.items(), key=lambda x: x[0])
+    formatted_postings = []
+    for word, positions in sorted_posting_list:
+        term_frequency = len(positions)
+        postings = defaultdict(list)
+        for doc_id, pos in sorted(positions):
+            postings[doc_id].append(str(pos))
+        postings_str = "\n    ".join([f"doc{doc_id}: {', '.join(pos_list)};" for doc_id, pos_list in postings.items()])
+        formatted_postings.append(f"<{word}: {term_frequency};\n    {postings_str}>")
     
-    query = st.text_input("Enter a search query (with * for wildcard):")
-    if st.button("Search"):
-        results = permuterm.search(query)
-        st.write("Matching words:", results)
-    
-    if st.button("Show Posting List"):
-        st.write("Posting List:")
-        sorted_posting_list = sorted(permuterm.posting_list.items(), key=lambda x: (min(x[1]), x[0]) if x[1] else (float('inf'), x[0]))
-        for word, positions in sorted_posting_list:
-            st.write(f"{word}: {sorted(positions)}")
+    st.write("\n".join(formatted_postings))
