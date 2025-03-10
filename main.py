@@ -1,3 +1,4 @@
+You said:
 import re
 import streamlit as st
 import fitz  # PyMuPDF for PDFs
@@ -111,29 +112,15 @@ if documents:
 query = st.text_input("Enter a search query (with * for wildcard):")
 if st.button("Search"):
     results = permuterm.search(query)
-    if results:
-        st.write("### Search Results")
-        for word in results:
-            if word in permuterm.posting_list:
-                term_frequency = len(permuterm.posting_list[word])
-                postings = defaultdict(list)
-                for doc_id, pos in sorted(permuterm.posting_list[word]):
-                    postings[doc_id].append(str(pos))
-                postings_str = "\n    ".join([f"doc{doc_id}: {', '.join(pos_list)};" for doc_id, pos_list in postings.items()])
-                st.write(f"<{word}: {term_frequency};\n    {postings_str}>")
-    else:
-        st.write("No matching words found.")
+    st.write("Matching words:", results)
 
 if st.button("Show Posting List"):
     st.write("### Posting List (Sorted by Term)")
     sorted_posting_list = sorted(permuterm.posting_list.items(), key=lambda x: x[0])
-    formatted_postings = []
     for word, positions in sorted_posting_list:
         term_frequency = len(positions)
         postings = defaultdict(list)
         for doc_id, pos in sorted(positions):
             postings[doc_id].append(str(pos))
-        postings_str = "\n    ".join([f"doc{doc_id}: {', '.join(pos_list)};" for doc_id, pos_list in postings.items()])
-        formatted_postings.append(f"<{word}: {term_frequency};\n    {postings_str}>")
-    
-    st.write("\n".join(formatted_postings))
+        postings_str = "\n".join([f"doc{doc_id}:{','.join(pos_list)};" for doc_id, pos_list in postings.items()])
+        st.write(f"<{word}: {term_frequency};\n\n {postings_str}>")
