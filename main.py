@@ -36,7 +36,7 @@ class PermutermIndex:
     
     def search(self, query):
         if "*" not in query:
-            return [query] if query in self.word_map else []
+            return [(query, self.posting_list[query])] if query in self.word_map else []
         
         if query.count("*") == 1:
             if query.startswith("*"):
@@ -44,13 +44,13 @@ class PermutermIndex:
             elif "*" in query:
                 prefix, suffix = query.split("*")
                 query = suffix + "$" + prefix
-            return self._search_in_trie(query)
+            return [(word, self.posting_list[word]) for word in self._search_in_trie(query)]
         
         if query.count("*") == 2:
             prefix, middle, suffix = query.split("*")
             query = suffix + "$" + prefix
             potential_words = self._search_in_trie(query)
-            return [word for word in potential_words if middle in word]
+            return [(word, self.posting_list[word]) for word in potential_words if middle in word]
         
         return []
     
@@ -111,7 +111,16 @@ if documents:
 query = st.text_input("Enter a search query (with * for wildcard):")
 if st.button("Search"):
     results = permuterm.search(query)
-    st.write("Matching words:", results)
+    if results:
+        st.write("### Matching Words and Positions")
+        for word, positions in results:
+            postings = defaultdict(list)
+            for doc_id, pos in sorted(positions):
+                postings[doc_id].append(str(pos))
+            postings_str = "; ".join([f"doc{doc_id}:{','.join(pos_list)}" for doc_id, pos_list in postings.items()])
+            st.write(f"**{word}:** {postings_str}")
+    else:
+        st.write("No matching terms found.")
 
 if st.button("Show Posting List"):
     st.write("### Posting List (Sorted by Term)")
