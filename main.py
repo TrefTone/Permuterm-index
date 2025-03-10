@@ -61,18 +61,6 @@ class PermutermIndex:
                 return []
             node = node.children[char]
         return list(node.words)
-    
-    def display_trie(self, node=None, level=0, max_depth=4, prefix=""):
-        if node is None:
-            node = self.trie
-        if level > max_depth:
-            return ""
-        
-        tree_str = ""
-        for char, child in node.children.items():
-            tree_str += "  " * level + f"|-- {char}\n"
-            tree_str += self.display_trie(child, level + 1, max_depth, prefix + char)
-        return tree_str
 
 # Document Processing
 def process_document(text):
@@ -116,8 +104,7 @@ if uploaded_file is not None:
         st.write("Matching words:", results)
     
     if st.button("Show Posting List"):
-        st.write("Posting List:", dict(permuterm.posting_list))
-    
-    if st.button("Show Trie (Depth 4)"):
-        trie_representation = permuterm.display_trie()
-        st.text(trie_representation)
+        st.write("Posting List:")
+        sorted_posting_list = sorted(permuterm.posting_list.items(), key=lambda x: (min(x[1]), x[0]) if x[1] else (float('inf'), x[0]))
+        for word, positions in sorted_posting_list:
+            st.write(f"{word}: {sorted(positions)}")
