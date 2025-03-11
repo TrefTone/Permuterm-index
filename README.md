@@ -1,37 +1,49 @@
-**Understanding and Implementing Permuterm Index Search using Streamlit**
+# **Permuterm Index Search: Code Explanation and Theory**
 
-## Introduction
-In modern information retrieval systems, searching for words with wildcard characters (such as "data*" or "*logy") is a common requirement. Traditional search techniques struggle with efficient wildcard searches, but the **Permuterm Index** provides a powerful way to handle such queries efficiently. This document explains the implementation of a **Permuterm Index Search** system using Python, **Streamlit** for UI, and **PyMuPDF** & **python-docx** for document processing.
+## **Introduction**
 
-This system allows users to upload documents (TXT, PDF, or DOCX), extract text, preprocess it, and build a permuterm index. Users can then perform wildcard searches using an optimized trie-based data structure.
+The given code implements a **Permuterm Index Search** system using a **Trie data structure**. It allows efficient wildcard searches on indexed words from text documents (TXT, PDF, and DOCX). The key feature of this system is the use of **rotated permutations of words** to facilitate fast pattern matching.
 
----
-
-## Theory: Understanding the Permuterm Index
-
-### 1. What is a Permuterm Index?
-A **Permuterm Index** is a search structure that enables efficient wildcard searches by rotating words and storing them in a trie. This allows quick lookup for queries with prefixes, suffixes, and infixes containing '*'.
-
-### 2. Rotated Terms
-Each word is augmented with a special symbol (`$`) and rotated multiple times to store all possible wildcard variations. For example:
-
-```
-word: "apple"
-rotated terms: "apple$", "pple$a", "ple$ap", "le$app", "e$appl", "$apple"
-```
-
-### 3. Search Queries
-Wildcard queries can be mapped to prefix searches in a trie:
-- `app*` → Search for `$app` in the trie.
-- `*ple` → Search for `ple$` in the trie.
-- `*ppl*` → Check all words containing `ppl`.
-
-### 4. Complexity
-- **Insertion**: `O(m^2)`, where `m` is the word length.
-- **Search**: `O(m)`, optimized using a trie.
+This document thoroughly explains the theory behind the **Permuterm Index**, discusses the **data structures used**, explains key **variables**, and provides a **step-by-step breakdown** of the code.
 
 ---
 
+## **Theory**
+
+### **Permuterm Indexing**
+The **Permuterm Index** is a type of indexing that supports wildcard searches efficiently. It works by **storing rotated versions of words** along with their original forms, making it possible to perform searches with leading or trailing wildcards.
+
+#### **Wildcard Search**
+A standard word "hello" can have wildcard searches like:
+- `hel*` → Matches "hello", "helmet", etc.
+- `*lo` → Matches "hello", "solo", etc.
+- `h*l*` → Matches "hollow", "helical", etc.
+
+To enable such searches, we rotate words by appending a special character (e.g., `$`) at the end:
+
+| Word  | Rotations Stored in Index |
+|--------|--------------------------|
+| hello  | `hello$`, `ello$h`, `llo$he`, `lo$hel`, `o$hell`, `$hello` |
+
+By doing this, **any wildcard query can be mapped to a prefix search in the Trie data structure**.
+
+### **Data Structures Used**
+
+#### **1. Trie (Prefix Tree)**
+A **Trie** is a tree-like data structure used for storing strings efficiently. It is particularly useful in prefix-based search operations. Each node represents a character, and words are formed by traversing from the root to a leaf node.
+
+##### **Why Trie?**
+- **Fast Search:** Supports prefix searching in **O(m)** time (where `m` is the length of the query string).
+- **Efficient Storage:** Stores multiple words compactly with shared prefixes.
+- **Wildcard Matching:** Helps in retrieving words quickly based on a given prefix.
+
+#### **2. Dictionary (Hash Map)**
+Dictionaries (hash maps) are used to store **posting lists**, which map words to the documents and positions where they occur. This allows for fast retrieval during search queries.
+
+#### **3. Default Dictionary**
+The **defaultdict** from Python’s collections module is used to store word positions efficiently. It automatically creates an empty list when a new key is accessed.
+
+---
 ## Methodology: How the System Works
 
 1. **File Upload**: Users upload documents in TXT, PDF, or DOCX format.
@@ -48,10 +60,9 @@ Wildcard queries can be mapped to prefix searches in a trie:
    - Retrieve matching words and their document positions.
 
 ---
+## **Code Breakdown**
 
-## Code Explanation
-
-### 1. **Imports & Stopwords**
+### **Imports and Global Variables**
 ```python
 import re
 import streamlit as st
@@ -60,21 +71,17 @@ import docx  # python-docx for DOCX
 from collections import defaultdict
 import pandas as pd
 ```
-**Explanation:**
+#### **Explanation:**
 - `re`: Regular expressions for text processing.
-- `streamlit`: GUI for web-based interaction.
-- `fitz`: Extract text from PDFs.
-- `docx`: Extract text from DOCX files.
-- `defaultdict`: Efficient handling of dictionary data.
-- `pandas`: Display structured data in a table.
+- `streamlit`: Used for building a web-based UI for the application.
+- `fitz`: Library for extracting text from PDFs.
+- `docx`: Library for extracting text from DOCX files.
+- `defaultdict`: Efficient storage of word-posting lists.
+- `pandas`: Used to display tabular data.
 
-```python
-STOPWORDS = set(["a", "the", "is", "in", "of", "for", "on", "with", "at", "by", "this", "that", "it", "to" ... ])
-```
-**Explanation:**
-- Defines common stopwords to remove unimportant words from documents.
+---
 
-### 2. **Trie Data Structure for Efficient Lookup**
+### **Class: TrieNode**
 ```python
 class TrieNode:
     def __init__(self):
@@ -82,13 +89,14 @@ class TrieNode:
         self.is_end = False
         self.words = set()
 ```
-**Explanation:**
-- Each node in the trie stores:
-  - `children`: Dictionary mapping characters to child nodes.
-  - `is_end`: Marks end of a word.
-  - `words`: Stores original words corresponding to rotated terms.
+#### **Explanation:**
+- **`self.children`** → Stores child nodes (characters of the word).
+- **`self.is_end`** → Marks if a word ends at this node.
+- **`self.words`** → Stores words that pass through this node.
 
-### 3. **Permuterm Index Class**
+---
+
+### **Class: PermutermIndex**
 ```python
 class PermutermIndex:
     def __init__(self):
@@ -96,94 +104,91 @@ class PermutermIndex:
         self.word_map = {}
         self.posting_list = defaultdict(set)
 ```
-**Explanation:**
-- `trie`: Root node of the trie.
-- `word_map`: Tracks words inserted.
-- `posting_list`: Stores document positions for each word.
+#### **Explanation:**
+- **`self.trie`** → The root node of the Trie.
+- **`self.word_map`** → A dictionary to check if a word exists.
+- **`self.posting_list`** → Stores document positions for each word.
 
 ```python
-def insert(self, word, doc_id, position):
-    self.word_map[word] = True
-    self.posting_list[word].add((doc_id, position + 1))
-    rotated_word = word + "$"
-    for i in range(len(rotated_word)):
-        rotated = rotated_word[i:] + rotated_word[:i]
-        self._insert_into_trie(rotated, word)
+    def insert(self, word, doc_id, position):
+        self.word_map[word] = True
+        self.posting_list[word].add((doc_id, position + 1))
+        rotated_word = word + "$"
+        for i in range(len(rotated_word)):
+            rotated = rotated_word[i:] + rotated_word[:i]
+            self._insert_into_trie(rotated, word)
 ```
-**Explanation:**
-- Appends `$` to mark word boundaries.
-- Rotates the word and inserts variations into the trie.
+#### **Insertion Process:**
+1. Store word in `word_map`.
+2. Update `posting_list` with document ID and word position.
+3. Rotate the word and insert all rotated forms into the Trie.
 
 ```python
-def search(self, query):
-    if '*' not in query:
-        return [(query, self.posting_list[query])] if query in self.word_map else []
-    
-    if query.startswith('*') and query.endswith('*') and query.count('*') == 2:
-        middle = query.strip('*')
-        return [(word, self.posting_list[word]) for word in self.word_map if middle in word]
-    
-    if query.startswith('*'):
-        query = query[1:] + '$'
-    elif query.endswith('*'):
-        query = '$' + query[:-1]
-    elif '*' in query:
-        prefix, suffix = query.split('*')
-        query = suffix + '$' + prefix
-    
-    return [(word, self.posting_list[word]) for word in self._search_in_trie(query)]
+    def _insert_into_trie(self, rotated, word):
+        node = self.trie
+        for char in rotated:
+            if char not in node.children:
+                node.children[char] = TrieNode()
+            node = node.children[char]
+            node.words.add(word)
+        node.is_end = True
 ```
-**Explanation:**
-- Converts wildcard queries into valid prefix searches.
-- Handles different types of wildcard patterns (`*word`, `word*`, `*word*`).
+#### **Trie Insertion Process:**
+1. Traverse through the Trie, inserting characters.
+2. Store the original word in each node.
 
-### 4. **Text Processing & File Handling**
+---
+
+### **Wildcard Search**
 ```python
-def extract_text_from_pdf(file):
-    doc = fitz.open(stream=file.read(), filetype="pdf")
-    return " ".join([page.get_text("text") for page in doc])
+    def search(self, query):
+        if '*' not in query:
+            return [(query, self.posting_list[query])] if query in self.word_map else []
 ```
-**Explanation:**
-- Extracts text from PDFs using PyMuPDF.
+#### **Search Flow:**
+1. If no wildcard (`*`), directly check in `word_map`.
+2. If `*` exists, modify the query into rotated format:
+   - `*word` → `word$`
+   - `word*` → `$word`
+   - `w*d` → `d$w`
+3. Perform a Trie lookup.
 
+---
+
+### **Document Processing**
 ```python
-def extract_text_from_docx(file):
-    doc = docx.Document(file)
-    return " ".join([para.text for para in doc.paragraphs])
+def process_document(text):
+    words = re.findall(r"\b[a-zA-Z]+\b", text.lower())
+    normalized_words = [word for word in words if word not in STOPWORDS]
+    return normalized_words
 ```
-**Explanation:**
-- Reads text from DOCX files.
+#### **Steps:**
+1. Extract words using regex.
+2. Convert to lowercase.
+3. Remove stopwords.
 
-### 5. **Streamlit UI Integration**
+---
+
+### **Final Streamlit App**
 ```python
 st.title("Permuterm Index Search")
 
 uploaded_files = st.file_uploader("Upload documents", type=["txt", "pdf", "docx"], accept_multiple_files=True)
-```
-**Explanation:**
-- Creates a Streamlit interface for file uploads.
 
-```python
-query = st.text_input("Enter a search query (with * for wildcard):")
-if st.button("Search"):
-    results = permuterm.search(query)
-    if results:
-        st.write("### Search Results")
-        for word, positions in results:
-            st.write(f"**{word}:** {positions}")
-    else:
-        st.write("No matching terms found.")
+permuterm = PermutermIndex()
 ```
-**Explanation:**
-- Takes user input and searches for wildcard queries in the permuterm index.
+#### **UI Components:**
+- Upload files
+- Process text into the Permuterm Index
+- Perform searches based on user input
 
 ---
 
-## Conclusion
-This project demonstrates an efficient way to handle wildcard searches using a **Permuterm Index** with **Trie** data structures. The implementation allows users to upload documents, build an index, and search for words effectively. This approach optimizes search performance compared to traditional methods.
+## **Conclusion**
+This project implements a **Trie-based Permuterm Index** for efficient wildcard search. The combination of Tries and hash maps enables **fast indexing and retrieval**, making it suitable for large-scale document searches.
 
-Future enhancements may include:
-- **Fuzzy Search** for handling typos.
-- **Phrase Queries** for multi-word searches.
-- **Big Data Integration** for large-scale text processing.
+Future enhancements could include:
+- **Phrase searches** (multi-word queries)
+- **Better ranking of results**
+- **Optimized storage using compressed Tries**
 
