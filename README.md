@@ -1,4 +1,4 @@
-# **Final year Information Retrieval project**
+# **Final year Information Retrieval project (TA1)**
 
 # **Permuterm Index Search: Code Explanation and Theory**
 
